@@ -1,8 +1,8 @@
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import { loginSchema, registerSchema } from "./auth.schema";
-import { register, EmailAlreadyExistsError, login, InvalidCredentialsError, getMe, UserNotFoundError } from "./auth.service";
+import { register, login, getMe } from "./auth.service";
 
-export async function registerHandler(req: Request, res: Response): Promise<void> {
+export async function registerHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   const parsed = registerSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -17,15 +17,11 @@ export async function registerHandler(req: Request, res: Response): Promise<void
     const user = await register(parsed.data);
     res.status(201).json(user);
   } catch (error) {
-    if (error instanceof EmailAlreadyExistsError) {
-      res.status(409).json({ message: error.message });
-      return;
-    }
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
-export async function loginHandler(req: Request, res: Response): Promise<void> {
+export async function loginHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   const parsed = loginSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -40,23 +36,15 @@ export async function loginHandler(req: Request, res: Response): Promise<void> {
     const result = await login(parsed.data);
     res.status(200).json(result);
   } catch (error) {
-    if (error instanceof InvalidCredentialsError) {
-      res.status(401).json({ message: error.message });
-      return;
-    }
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
-export async function meHandler(req: Request, res: Response): Promise<void> {
+export async function meHandler(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const user = await getMe(req.userId!);
     res.status(200).json(user);
   } catch (error) {
-    if (error instanceof UserNotFoundError) {
-      res.status(404).json({ message: error.message });
-      return;
-    }
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
